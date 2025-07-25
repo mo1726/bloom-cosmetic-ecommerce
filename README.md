@@ -83,7 +83,7 @@ CREATE TABLE coupons (
   discount_percentage INT CHECK (discount_percentage BETWEEN 0 AND 100),
   used BOOLEAN DEFAULT 0
 );
-
+```
 🧪 How to Run Locally
 Clone the repo:
 
