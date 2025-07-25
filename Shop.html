@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="checkout">Checkout - Bloom Cosmetics</title>
+    <link rel="icon" href="images/icon.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <nav>
+                <a href="#" class="logo">
+                    <img src="images/logo.png" alt="BLOOM Cosmetics" />
+                    <h1 data-translate="header">Bloom COSMETICS</h1>
+                </a>
+                <ul class="nav-links">
+                    <li class="btn_shop">
+                        <div class="language-switcher">
+                            <div class="lang-option" onclick="switchLanguage('en')">
+                              <img src="images/download (1).png" alt="English Flag"> English
+                            </div>
+                            <div class="lang-option" onclick="switchLanguage('ar')">
+                              <img src="images/Flag-Saudi-Arabia.webp" alt="Arabic Flag"> العربية
+                            </div>
+                          </div>
+                        <a href="index.html" class="cta-button" data-translate="back" id="backButton">Back</a>
+                        
+                    </li>
+                </ul>
+            </nav>
+        </header>
+
+        <!-- Checkout Section -->
+        <section class="checkout">
+            <div class="img-product">
+                <img src="images/photo-1739980697297-a6bae90481de.avif" alt="Product Image">
+            </div>
+            <div class="form-shop">
+                <h1 data-translate="formShop">Bloom Cosmetic</h1>
+                <form id="checkoutForm" method="POST">
+                    <label for="fullname" data-translate="fullname">Full name:</label>
+                    <input type="text" id="fullname" name="fullname" required>
+                    
+                    <label for="number" data-translate="number">Number:</label>
+                    <input type="text" id="number" name="number" required>
+                    
+                    <label for="adresse" data-translate="adresse">Address:</label>
+                    <input type="text" id="adresse" name="adresse" required>
+                    
+                    <label for="quantity" data-translate="quantity">Quantity:</label>
+                    <input type="number" id="quantity" name="quantity" min="1" value="1" required>
+                    
+                    <div class="coupound" id="coupound">
+                        <label for="couponCode" data-translate="coupon">Coupon:</label><br>
+                        <input type="text" id="couponCode" placeholder="Enter coupon code">
+                        <button type="button" onclick="validateCoupon()" data-translate="validateCoupon">Validate Coupon</button>
+                        <p id="couponMessage"></p>
+                    </div>
+                    
+                    <div class="coupon-tooge">
+                        <p id="totalPrice" data-translate-attr="totalPrice|textContent">Total Price: <span id="price-total">169.00</span> DH</p>
+                        <button class="coupon-button" id="couponButton" type="button" onclick="toggleCoupon()" data-translate="haveCoupon">Have coupon?</button>
+                    </div>
+                    
+                    <p id="price" style="display: none;">169</p>
+                    <button type="submit" class="pay-now-button" data-translate="orderNow">Order now</button>
+                </form>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>&copy; 2025 BLOOM Cosmetics. All rights reserved.</p>
+            <ul class="social-links">
+              <li><a href="#" aria-label="Follow us on Facebook">Facebook</a></li>
+              <li><a href="#" aria-label="Follow us on Instagram">Instagram</a></li>
+              <li><a href="#" aria-label="Follow us on Twitter">Twitter</a></li>
+            </ul>
+            
+          </footer>
+    </div>
+
+    <!-- Popup for order confirmation -->
+    <div id="orderConfirmationPopup" class="popup">
+        <div class="popup-content">
+            <h3 data-translate="orderConfirmation">Order Confirmation</h3>
+            <p data-translate="orderMessage">We will call you in a few minutes to confirm your order.</p>
+            <button id="closePopup" data-translate="closePopup">Close</button>
+        </div>
+    </div>
+    <script>
+        // Coupon toggle button
+        function toggleCoupon() {
+            const toggle = document.getElementById("coupound");
+            const coupon = document.getElementById("couponButton");
+        
+            if (toggle.style.display === "none") {
+                toggle.style.display = "block";
+                coupon.innerHTML = translations[localStorage.getItem('selectedLanguage') || 'en']["hideCoupon"] || "Hide Coupon";
+            } else {
+                toggle.style.display = "none";
+                coupon.innerHTML = translations[localStorage.getItem('selectedLanguage') || 'en']["haveCoupon"] || "Have coupon?";
+            }
+        }
+        
+        // Function to validate the coupon
+        async function validateCoupon() {
+            const couponCode = document.getElementById("couponCode").value.trim().toUpperCase();
+            const couponMessage = document.getElementById("couponMessage");
+        
+            if (!couponCode) {
+                couponMessage.textContent = translations[localStorage.getItem('selectedLanguage') || 'en']["enterCoupon"] || "Please enter a coupon code.";
+                couponMessage.style.color = "red";
+                return;
+            }
+        
+            try {
+                const response = await fetch(`https://bloom-cosmet.com/validate_coupon.php?code=${couponCode}`);
+                
+                // Check if the response is JSON
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error(translations[localStorage.getItem('selectedLanguage') || 'en']["invalidResponse"] || "Invalid response from server.");
+                }
+        
+                const data = await response.json();
+        
+                if (!data.success) {
+                    throw new Error(data.message || translations[localStorage.getItem('selectedLanguage') || 'en']["invalidCoupon"] || "Invalid coupon code.");
+                }
+        
+                // If the coupon is valid, apply the discount
+                couponMessage.textContent = data.message || translations[localStorage.getItem('selectedLanguage') || 'en']["validCoupon"] || "Coupon applied successfully!";
+                couponMessage.style.color = "green";
+        
+                // Apply the discount to the order
+                applyDiscount(data.discount);
+            } catch (error) {
+                couponMessage.textContent = error.message || translations[localStorage.getItem('selectedLanguage') || 'en']["couponError"] || "Coupon validation failed.";
+                couponMessage.style.color = "red";
+            }
+        }
+        
+        // Function to apply the discount
+        function applyDiscount(discount) {
+            // Get the original price from the hidden element
+            const originalPrice = parseFloat(document.getElementById("price").textContent);
+            console.log("Original Price:", originalPrice);
+        
+            // Calculate the discounted price
+            const quantity = parseInt(document.getElementById("quantity").value) || 1;
+            const discountedPrice = (originalPrice * quantity) * (1 - discount / 100);
+        
+            // Update the displayed price in the element with ID "price-total"
+            document.getElementById("price-total").textContent = discountedPrice.toFixed(2);
+        }
+
+        // Get unit price from hidden element when page loads
+        document.addEventListener("DOMContentLoaded", function () {
+            const unitPrice = parseFloat(document.getElementById("price").textContent);
+            
+            // Add event listener to quantity input
+            const quantityInput = document.getElementById("quantity");
+            quantityInput.addEventListener("change", function() {
+                const currentQuantity = parseInt(this.value) || 1;
+                const newTotal = (unitPrice * currentQuantity).toFixed(2);
+                document.getElementById("price-total").textContent = newTotal;
+            });
+
+            document.getElementById("checkoutForm").addEventListener("submit", function (event) {
+                event.preventDefault(); // Prevent default form submission
+
+                const fullname = document.getElementById("fullname").value.trim();
+                const number = document.getElementById("number").value.trim();
+                const address = document.getElementById("adresse").value.trim();
+                const quantity = parseInt(document.getElementById("quantity").value) || 1;
+                const couponCode = document.getElementById("couponCode").value.trim();
+                const totalPrice = parseFloat(
+                    document.getElementById("price-total").textContent.replace(" DH", "")
+                );
+                
+                // Validate required fields
+                if (!fullname || !number || !address) {
+                    alert(translations[localStorage.getItem('selectedLanguage') || 'en']["fillFields"] || "Please fill in all required fields.");
+                    return;
+                }
+
+                const formData = {
+                    fullname: fullname,
+                    number: number,
+                    address: address,
+                    quantity: quantity,
+                    couponCode: couponCode,
+                    totalPrice: totalPrice
+                };
+
+                console.log("Form Data:", formData); // Log the form data before sending
+
+                fetch("https://bloom-cosmet.com/submit_order.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => {
+                    console.log("Response Status:", response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Response Data:", data);
+                    if (data.success) {
+                        // Show popup instead of alert
+                        document.getElementById("checkoutForm").reset();
+                        document.getElementById("orderConfirmationPopup").style.display = "flex";
+                    } else {
+                        alert(translations[localStorage.getItem('selectedLanguage') || 'en']["orderError"] || "Error: " + (data.message || "Failed to place order."));
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert(translations[localStorage.getItem('selectedLanguage') || 'en']["networkError"] || "Failed to place order. Please check your network connection and try again.");
+                });
+            });
+        });
+        
+        // Close popup when close button is clicked
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById("closePopup").addEventListener("click", function () {
+                document.getElementById("orderConfirmationPopup").style.display = "none";
+            });
+        });
+
+        // Translation data
+const translations = {
+    en: {
+      // English translations for all text elements
+      "logo": "Bloom COSMETICS",
+      "header": "Bloom Cosmetics",
+      "discoverMore": "Discover More",
+      "gel":"Cleansing gel",
+      "close": "Close",
+      "about": "About Us",
+      "product1": "Let Your Skin Bloom✨🌸",
+      "natureInspired": "Nature-Inspired, Science-Backed",
+      "dermatologicallyTested": "Dermatologically Tested & Expertly Formulated",
+      "gentleOnSkin": "Gentle on Skin, Powerful in Results",
+      "highQuality": "High-Quality, Certified Formulations",
+      "ourBrand": "Our Brand",
+      "productDescription": "Welcome to Bloom 🌸 – where nature meets science. Our skincare products are crafted with the purest ingredients and lab-sourced acids, all fragrance-free. Embrace the beauty of simplicity and transparency. Join us in shaping the future of skincare, as we create personalized compositions just for you. Together, we'll redefine beauty. ✨",
+      "learnMore": "Learn More",
+      "customerReviews": "Customer Reviews",
+      "leaveReview": "Leave a Review",
+      "yourName": "Your Name",
+      "yourReview": "Your Review",
+      "rating": "Rating",
+      "submitReview": "Submit Review",
+      "checkout": "Checkout - Bloom Cosmetics",
+      "back": "Back",
+      "formShop": "Bloom Cosmetic",
+      "fullname": "Full name:",
+      "number": "Number:",
+      "adresse": "Address:",
+      "quantity": "Quantity:",
+      "coupon": "Coupon:",
+      "validateCoupon": "Validate Coupon",
+      "totalPrice": "Total Price:",
+      "haveCoupon": "Have coupon?",
+      "orderNow": "Order now",
+      "orderConfirmation": "Order Confirmation",
+      "orderMessage": "We will call you in a few minutes to confirm your order.",
+      "closePopup": "Close",
+      "description": "💧 For sensitive and all skin types✨ Refreshes, hydrates, and promotes a clear complexion.",
+      "shopnow":"Shop Now",
+      "natureInspired": "🌿Nature-Inspired, Science-Backed",
+      "dermatologicallyTested": "🧪Dermatologically Tested & Expertly Formulated",
+      "gentleOnSkin": "💖Gentle on Skin, Powerful in Results",
+      "highQuality": "✨High-Quality, Certified Formulations"
+    },
+    ar: {
+      // Arabic translations
+      "gel":"غسول للوجه",
+      "discoverMore": "اكتشف المزيد",
+      "description":"💧 للبشرة الحساسة وجميع أنواع البشرة✨ ينعش البشرة ويرطبها ويمنحها نضارة وحيوية.",
+      "shopnow": "تسوق الآن",
+      "close": "إغلاق",
+      "about": "من نحن",
+      "natureInspired": "🌿ملهم من الطبيعة، مدعوم بالعلم",
+      "dermatologicallyTested": "🧪 مختبر ديرماتولوجي & صيغ خبيرة",
+      "gentleOnSkin": "💖لطيف على الجلد، قوي النتائج",
+      "highQuality": "✨ جودة عالية، صيغ معتمدة",
+      "ourBrand": "ماركتنا",
+      "product1": "دعي بشرتك تتفتح✨🌸",
+      "productDescription": "مرحباً بكم في Bloom 🌸 – حيث تلتقي الطبيعة بالعلم. منتجاتنا للعناية بالبشرة مصنوعة من أنقى المكونات والأحماض المشتقة من المختبرات، دون إضافة عطور. احتضني جمال البساطة والشفافية. انضموا إلينا في تشكيل مستقبل العناية بالبشرة، حيث نصنع تركيبات مخصصة لكم. معاً، سنعيد تعريف الجمال.",
+      "learnMore": "تعرف المزيد",
+      "customerReviews": "آراء العملاء",
+      "leaveReview": "اترك مراجعة",
+      "yourName": "اسمك",
+      "yourReview": "مراجعتك",
+      "rating": "التقييم",
+      "submitReview": "إرسال المراجعة",
+      "checkout": "الدفع - بلوم كوزمتيكس",
+      "back": "الرجوع",
+      
+      "fullname": "الاسم الكامل :",
+      "number": "الرقم :",
+      "adresse": "العنوان :",
+      "quantity": "الكمية :",
+      "coupon": "كود الخصم :",
+      "validateCoupon": "تحقق من الكود",
+      "totalPrice": "السعر الإجمالي :",
+      "haveCoupon": "هل لديك كود خصم؟",
+      "orderNow": "أطلب الآن",
+      "orderConfirmation": "تأكيد الطلب",
+      "orderMessage": "سنوصل إليك في غضون دقائق لتأكيد طلبك.",
+      "closePopup": "إغلاق"
+    }
+  };
+  
+  // Function to switch language
+  function switchLanguage(lang) {
+    localStorage.setItem('selectedLanguage', lang);
+    translatePage();
+  }
+  
+  // Function to translate the page
+  function translatePage() {
+    const lang = localStorage.getItem('selectedLanguage') || 'en';
+    
+    // Update all translatable elements
+    document.querySelectorAll('[data-translate]').forEach(element => {
+      const key = element.getAttribute('data-translate');
+      if (translations[lang][key]) {
+        element.textContent = translations[lang][key];
+      }
+    });
+    
+    // Update attributes if needed
+    document.querySelectorAll('[data-translate-attr]').forEach(element => {
+      const [key, attr] = element.getAttribute('data-translate-attr').split('|');
+      if (translations[lang][key]) {
+        element.setAttribute(attr, translations[lang][key]);
+      }
+    });
+    
+    // Update direction for Arabic
+    if (lang === 'ar') {
+      document.body.setAttribute('dir', 'rtl');
+      document.body.style.direction = 'rtl';
+      document.body.style.textAlign = 'right';
+    } else {
+      document.body.setAttribute('dir', 'ltr');
+      document.body.style.direction = 'ltr';
+      document.body.style.textAlign = 'left';
+    }
+  }
+  
+  // Initialize translation when page loads
+  document.addEventListener('DOMContentLoaded', () => {
+    translatePage();
+  });
+    </script>
+    
+</body>
+
+</html>
